@@ -4,7 +4,15 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import { persons, products, purchases } from "./database";
-import { user, PRODUCT, product, purchase } from "./types"
+import { user, PRODUCT, product, purchase } from "./types";
+import {
+  deleteProductById,
+  deleteUserById,
+  getProductById,
+  getUserPurchasesByUserId,
+  modifiecProduct,
+  modifiedUser,
+} from "./api/requests";
 
 const app = express();
 
@@ -41,51 +49,67 @@ app.get("/product/search", (req: Request, res: Response) => {
 });
 //createNewUser
 app.post("/users", (req: Request, res: Response) => {
-    const id = req.body.id as string;
-    const email = req.body.email as string;
-    const password = req.body.password as string;
+  const id = req.body.id as string;
+  const email = req.body.email as string;
+  const password = req.body.password as string;
 
-    const newUser: user = {
-        id,
-        email,
-        password,
-    }
-    persons.push(newUser)
-    res.status(201).send("Usuario cadastrado com sucesso!")
-})
+  const newUser: user = {
+    id,
+    email,
+    password,
+  };
+  persons.push(newUser);
+  res.status(201).send("Usuario cadastrado com sucesso!");
+});
 //createNewProduct
 app.post("/products", (req: Request, res: Response) => {
-    const id = req.body.id as string;
-    const name = req.body.name as string;
-    const price = req.body.price as number;
-    const category = req.body.category as PRODUCT
+  const id = req.body.id as string;
+  const name = req.body.name as string;
+  const price = req.body.price as number;
+  const category = req.body.category as PRODUCT;
 
-    const newProduct: product = {
-        id,
-        name,
-        price,
-        category,
-    }
-    products.push(newProduct)
-    res.status(201).send("Produto cadastrado com sucesso!")
-})
+  const newProduct: product = {
+    id,
+    name,
+    price,
+    category,
+  };
+  products.push(newProduct);
+  res.status(201).send("Produto cadastrado com sucesso!");
+});
 //createPurchase
 app.post("/purchases", (req: Request, res: Response) => {
-    const userId = req.body.userId as string;
-    const productId = req.body.productId as string;
-    const quantity = req.body.quantity as number;
-    const totalPrice = req.body.totalPrice as any;
+  const userId = req.body.userId as string;
+  const productId = req.body.productId as string;
+  const quantity = req.body.quantity as number;
+  const totalPrice = req.body.totalPrice as any;
 
-    const newPurchase: purchase = {
-        userId,
-        productId,
-        quantity,
-        totalPrice,
-    }
-    purchases.push(newPurchase)
-    res.status(201).send("Compra realizada com sucesso!")
-})
+  const newPurchase: purchase = {
+    userId,
+    productId,
+    quantity,
+    totalPrice,
+  };
+  purchases.push(newPurchase);
+  res.status(201).send("Compra realizada com sucesso!");
+});
 
 app.get("/purchases", (req: Request, res: Response) => {
-    res.send(purchases)
-})
+  res.send(purchases);
+});
+
+
+
+// --------------------------------------------
+
+app.get("/products/:id", getProductById);
+
+app.get("/users/:id/purchases", getUserPurchasesByUserId);
+
+app.delete("/users/:id", deleteUserById);
+
+app.delete("/products/:id", deleteProductById);
+
+app.put("/users/:id", modifiedUser);
+
+app.put("/products/:id", modifiecProduct);
