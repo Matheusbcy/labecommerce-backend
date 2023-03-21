@@ -17,11 +17,14 @@ Para executar este projeto, é necessário ter o Node.js instalado na sua máqui
 
 ## Como executar o projeto
 
-Clone este repositório para sua máquina local
-Abra o terminal na pasta raiz do projeto
-Execute o comando npm install para instalar as dependências do projeto
-Execute o comando npm run dev para iniciar o servidor
-O servidor estará rodando na porta 3000 por padrão, acesse http://localhost:3000 no seu navegador ou ferramenta de testes de API.
+1ª Clone este repositório para sua máquina local.
+2ª Abra o terminal na pasta raiz do projeto.
+3ª Execute o comando npm install para instalar as dependências do projeto.
+4ª Execute o comando npm run dev para iniciar o servidor.
+5ª O servidor estará rodando na porta 3000 por padrão, acesse http://localhost:3000 no seu navegador ou ferramenta de testes de API.
+
+## Documentação da API
+A documentação da API pode ser acessada no link: https://documenter.getpostman.com/view/24823033/2s93RKzbNf
 
 ## Tecnologias utilizadas
 
