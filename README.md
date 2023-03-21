@@ -28,7 +28,7 @@ A documentação da API pode ser acessada no link: https://documenter.getpostman
 
 ## Tecnologias utilizadas
 
-TypeScript
+TypeScript  
 Express
 
 ## Contribuindo
