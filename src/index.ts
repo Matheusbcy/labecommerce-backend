@@ -3,7 +3,7 @@
 
 import express, { Request, Response } from "express";
 import cors from "cors";
-import { persons, products, purchases } from "./database";
+import { createPurchase, persons, products, purchases } from "./database";
 import { user, PRODUCT, product, purchase } from "./types";
 import {
   deleteProductById,
@@ -72,20 +72,16 @@ app.post("/users", (req: Request, res: Response) => {
     const password = req.body.password as string;
 
     if (persons.some((user) => user.id === id)) {
-      res.status(404);
       throw new Error("Id de usuario ja existe. tente outro id");
     }
 
     if (persons.some((user) => user.email === email)) {
-      res.status(404);
       throw new Error("Email de usuario já existe. tente outro email.");
     }
 
     if (password.length < 8) {
-      res.status(404);
       throw new Error("Senha deve contar no minimo 8 caracteres.");
     }
-
     const newUser: user = {
       id,
       email,
@@ -94,7 +90,7 @@ app.post("/users", (req: Request, res: Response) => {
     persons.push(newUser);
     res.status(201).send("Usuario cadastrado com sucesso!");
   } catch (error) {
-    res.send(error.message);
+    res.status(404).send(error.message);
   }
 });
 //createNewProduct
@@ -106,23 +102,19 @@ app.post("/products", (req: Request, res: Response) => {
     const category = req.body.category as PRODUCT;
 
     if (products.some((product) => product.id === id)) {
-      res.status(404);
       throw new Error("Id de produto ja existe. tente outro id");
     }
     if (name.length < 2) {
-      res.status(404);
       throw new Error(
         "Novo nome do produto tem que ter no minimo 2 caracteres."
       );
     }
     if (price !== undefined) {
       if (price < 0) {
-        res.status(404);
         throw new Error("Valor do produto deve ser maior que 0");
       }
     }
     if (!Object.values(PRODUCT).includes(category)) {
-      res.status(404);
       throw new Error("Categoria de produto não existe.");
     }
     const newProduct: product = {
@@ -134,7 +126,7 @@ app.post("/products", (req: Request, res: Response) => {
     products.push(newProduct);
     res.status(201).send("Produto cadastrado com sucesso!");
   } catch (error) {
-    res.send(error.message);
+    res.status(404).send(error.message);
   }
 });
 //createPurchase
@@ -143,23 +135,14 @@ app.post("/purchases", (req: Request, res: Response) => {
     const userId = req.body.userId as string;
     const productId = req.body.productId as string;
     const quantity = req.body.quantity as number;
-    const totalPrice = req.body.totalPrice as any;
 
-    if(purchases.some((p) => p.userId === userId)) {
-      res.status(404)
-      throw new Error("Id de usuario ja existe nas compras.");
-    }
-    if(purchases.some((p) => p.productId === productId)) {
-      res.status(404)
-      throw new Error("Id de produto ja existe nas compras.");
-    }
-    const newPurchase: purchase = {
-      userId,
-      productId,
-      quantity,
-      totalPrice,
-    };
-    purchases.push(newPurchase);
+    if(quantity !== undefined){
+      if(quantity <= 0){
+        throw new Error("Quantidade deve ser maior que 0")
+      }
+    } 
+    
+    purchases.push(createPurchase(userId, productId, quantity));
     res.status(201).send("Compra realizada com sucesso!");
   } catch (error) {
     res.send(error.message);
@@ -183,3 +166,4 @@ app.delete("/products/:id", deleteProductById);
 app.put("/users/:id", modifiedUser);
 
 app.put("/products/:id", modifiecProduct);
+

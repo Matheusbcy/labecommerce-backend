@@ -10,13 +10,12 @@ function getProductById(req: Request, res: Response): void {
       res.status(404);
       throw new Error("Produto não existe.");
     }
-
     const productByid = products.find((product) => product.id === id);
 
     if (productByid) {
-      res.status(200).send("Objeto product encontrado!");
+      const productReturn = products.filter((produto) => produto.id === id)
+      res.status(200).send(productReturn);
     }
-    res.status(404).send("Objeto product não existe!");
   } catch (error) {
     res.send(error.message);
   }
@@ -123,13 +122,13 @@ function modifiedUser(req: Request, res: Response): void {
   }
 }
 
-function modifiecProduct(req: Request, res: Response): void {
+function modifiecProduct(req: Request, res: Response): void { 
   try {
     const id = req.params.id as string;
 
     if (!products.some((p) => p.id === id)) {
       res.status(404);
-      throw new Error("Id de usuário não existe.");
+      throw new Error("Id de produto não existe.");
     }
 
     const newName = req.body.name as string | undefined;
@@ -174,7 +173,7 @@ function modifiecProduct(req: Request, res: Response): void {
 }
 
 export {
-  getProductById,
+  getProductById, 
   getUserPurchasesByUserId,
   deleteUserById,
   deleteProductById,

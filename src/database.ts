@@ -30,26 +30,43 @@ const products: product[] = [
 
 const purchases: purchase[] = [
   {
-    userId: persons[0].id ? persons[0].id : "ID de usuário não existe.",
-    productId: persons[0].id
-      ? products[0].id
-      : "ID de usuario não possui produtos.",
-    quantity: persons[0].id ? 2 : 0,
-    totalPrice: persons[0].id
-      ? (products.find((p) => p.id === "1")?.price ?? 0) * 2
-      : "produtos não encontrados",
+    userId: persons[0].id,
+    productId: products[1].id,
+    quantity: 3,
+    totalPrice: products[1].price * 3,
   },
   {
-    userId: persons[1].id ? persons[1].id : "ID de usuário não existe.",
-    productId: persons[1].id
-      ? products[1].id
-      : "ID de usuario não possui produtos.",
-    quantity: persons[1].id ? 4 : 0,
-    totalPrice: persons[1].id
-      ? (products.find((p) => p.id === "1")?.price ?? 0) * 4
-      : "produtos não encontrados",
+    userId: persons[1].id,
+    productId: products[0].id,
+    quantity: 1,
+    totalPrice: products[0].price * 1,
   },
 ];
+
+export function createPurchase(
+  userId: string,
+  productId: string,
+  quantity: number
+): purchase {
+  const product = products.find((p) => p.id === productId);
+  const user = persons.find((u) => u.id === userId);
+
+  if (!product) {
+    throw new Error(`Produto com o ID ${productId} não encontrado`);
+  }
+
+  if (!user) {
+    throw new Error(`Usuário com o ID ${userId} não encontrado`);
+  }
+
+  return {
+    userId,
+    productId,
+    quantity,
+    totalPrice: product.price * quantity,
+  };
+}
+
 // TRATAMENTO DE USUARIOS
 function createUsers(id: string, email: string, password: string): void {
   if (id && email && password) {
