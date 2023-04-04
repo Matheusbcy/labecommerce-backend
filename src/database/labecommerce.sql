@@ -145,3 +145,48 @@ ORDER BY price ASC;
 
 -- RELAÇÔES SQL --
 
+CREATE TABLE
+    purchases (
+        id TEXT PRIMARY KEY UNIQUE NOT NULL,
+        total_price REAL NOT NULL,
+        paid INTEGER NOT NULL,
+        delivered_at TEXT,
+        buyer_id TEXT NOT NULL,
+        FOREIGN KEY (buyer_id) REFERENCES users(id)
+    );
+
+INSERT INTO
+    purchases (id, total_price, paid, buyer_id)
+VALUES ('p1', 50.0, 1, 'a001');
+
+INSERT INTO
+    purchases (id, total_price, paid, buyer_id)
+VALUES ('p2', 25.5, 1, 'a001');
+
+INSERT INTO
+    purchases (id, total_price, paid, buyer_id)
+VALUES ('p3', 10.0, 0, 'a003');
+
+INSERT INTO
+    purchases (id, total_price, paid, buyer_id)
+VALUES ('p4', 35.2, 1, 'a003');
+
+UPDATE purchases
+SET
+    delivered_at = DATETIME('2022-04-04 14:24:00')
+WHERE id = 'p4';
+
+SELECT
+    purchases.id,
+    purchases.total_price,
+    purchases.paid,
+    purchases.delivered_at,
+    purchases.buyer_id,
+    users.name,
+    users.email
+FROM purchases
+    INNER JOIN users ON users.id = purchases.buyer_id;
+
+-- DROP TABLE purchases;
+
+SELECT * FROM purchases;
