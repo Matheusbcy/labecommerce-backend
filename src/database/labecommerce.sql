@@ -64,4 +64,84 @@ VALUES (
         "Eletrônicos"
     );
 
-    SELECT * FROM products
+SELECT * FROM products;
+
+-- PROJETOOOO ---
+
+-- Get All Users
+
+SELECT * FROM users;
+
+-- Get All Products
+
+SELECT * FROM products;
+
+-- Search Product by name
+
+SELECT * FROM products WHERE name = "Tênis Nike Air Max";
+
+-- Create User
+
+INSERT INTO
+    users (id, name, email)
+VALUES (
+        "u004",
+        "Roberto Carlos",
+        "u004@gmail.com"
+    );
+
+-- Create Product
+
+INSERT INTO
+    products (id, name, price, catergory)
+VALUES (
+        "p006",
+        "Jaleco Feminino Sweet",
+        309,
+        "Roupas e Calçados"
+    );
+
+-- Get Products by id
+
+SELECT * FROM products WHERE id = "P001";
+
+-- Delete User by id
+
+DELETE FROM users WHERE id = "a002";
+
+-- Delete Product by id
+
+DELETE FROM products WHERE id = "P005";
+
+-- Edit User by id
+
+UPDATE users
+SET
+    id = "a004",
+    name = "Victor Motta"
+WHERE id = "u004";
+
+-- Edit Product by id
+
+UPDATE products
+SET
+    name = "Conjunto De Roupa Feminina Decotada"
+WHERE id = "P006";
+
+-- Get All Users
+
+SELECT * FROM users ORDER BY email ASC;
+
+-- Get All Products versão 1
+
+SELECT * FROM products ORDER BY price ASC LIMIT 20 OFFSET 0;
+
+-- Get All Products versão 2
+
+SELECT *
+FROM products
+WHERE price >= 100 AND price <= 300
+ORDER BY price ASC;
+
+-- RELAÇÔES SQL --
+
