@@ -1,43 +1,36 @@
 import express, { Request, Response } from "express";
 import { persons, products, purchases } from "../database";
 import { PRODUCT } from "../types";
+import { db } from "../database/knex";
 
-function getProductById(req: Request, res: Response): void {
+async function getProductById(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
 
-    if (!products.some((p) => p.id === id)) {
-      res.status(404);
-      throw new Error("Produto não existe.");
-    }
-    const productByid = products.find((product) => product.id === id);
+    const result = await db.raw(`SELECT * FROM products WHERE id = "${id}"`);
 
-    if (productByid) {
-      const productReturn = products.filter((produto) => produto.id === id)
-      res.status(200).send(productReturn);
+    if (result.length > 0) {
+      res.status(200).send("Produto encontrado no arquivo .db");
+    } else {
+      throw new Error("Product not found");
     }
+
   } catch (error) {
     res.send(error.message);
   }
 }
 
-function getUserPurchasesByUserId(req: Request, res: Response): void {
+async function getUserPurchasesByUserId(req: Request, res: Response) {
   try {
-    const userId = req.params.id as string;
+    const id = req.params.id as string;
 
-    if (!purchases.some((p) => p.userId === userId)) {
-      res.status(404);
-      throw new Error("Array de compras do usuário não existe.");
+    const result = await db.raw(`SELECT * FROM purchases WHERE id = "${id}"`)
+
+    if (result.length > 0){
+      res.status(200).send("array de compras do user no arquivo .db")
+    } else {
+      throw new Error("Purchases not found.")
     }
-
-    const purchaseById = purchases.find(
-      (purchase) => purchase.userId === userId
-    );
-
-    if (purchaseById) {
-      res.status(200).send("Array de compras do user encontrada!");
-    }
-    res.status(404).send("array de compras do user não existe!");
   } catch (error) {
     res.send(error.message);
   }
@@ -122,7 +115,7 @@ function modifiedUser(req: Request, res: Response): void {
   }
 }
 
-function modifiecProduct(req: Request, res: Response): void { 
+function modifiecProduct(req: Request, res: Response): void {
   try {
     const id = req.params.id as string;
 
@@ -173,7 +166,7 @@ function modifiecProduct(req: Request, res: Response): void {
 }
 
 export {
-  getProductById, 
+  getProductById,
   getUserPurchasesByUserId,
   deleteUserById,
   deleteProductById,

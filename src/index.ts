@@ -13,6 +13,7 @@ import {
   modifiecProduct,
   modifiedUser,
 } from "./api/requests";
+import { db } from "./database/knex";
 
 const app = express();
 
@@ -25,24 +26,27 @@ app.listen(3003, () => {
 });
 
 //getAllUsers
-app.get("/users", (req: Request, res: Response) => {
+app.get("/users", async (req: Request, res: Response) => {
   try {
-    res.status(200).send(persons);
+    const result = await db.raw(`SELECT * FROM users`);
+    res.status(200).send(result);
   } catch (error) {
     res.status(500);
   }
 });
+
 //getAllProducts
-app.get("/products", (req: Request, res: Response) => {
+app.get("/products", async (req: Request, res: Response) => {
   try {
-    res.status(200).send(products);
+    const result = await db.raw(`SELECT * FROM products`);
+    res.status(200).send(result);
   } catch (error) {
     res.status(500);
   }
 });
 
 //searchProductsByName
-app.get("/product/search", (req: Request, res: Response) => {
+app.get("/product/search", async (req: Request, res: Response) => {
   try {
     const q = req.query.q as string;
 
@@ -52,12 +56,8 @@ app.get("/product/search", (req: Request, res: Response) => {
         throw new Error("Name deve possuir mais de uma letra.");
       }
     }
-    const result = products.filter((product) => {
-      if (q) {
-        return product.name.toLowerCase().includes(q.toLowerCase());
-      }
-      return products;
-    });
+    const result = await db.raw(`SELECT * FROM products WHERE name = "${q}"`);
+
     res.status(200).send(result);
   } catch (error) {
     res.send(error.message);
@@ -65,45 +65,43 @@ app.get("/product/search", (req: Request, res: Response) => {
 });
 
 //createNewUser
-app.post("/users", (req: Request, res: Response) => {
+app.post("/users", async (req: Request, res: Response) => {
   try {
     const id = req.body.id as string;
+    const name = req.body.name as string;
     const email = req.body.email as string;
     const password = req.body.password as string;
-
-    if (persons.some((user) => user.id === id)) {
-      throw new Error("Id de usuario ja existe. tente outro id");
-    }
-
-    if (persons.some((user) => user.email === email)) {
-      throw new Error("Email de usuario já existe. tente outro email.");
-    }
 
     if (password.length < 8) {
       throw new Error("Senha deve contar no minimo 8 caracteres.");
     }
-    const newUser: user = {
-      id,
-      email,
-      password,
-    };
-    persons.push(newUser);
+    if (!email.includes("@")) {
+      throw new Error("Email deve conter @");
+    }
+
+    if (!id || !email || !name || !password) {
+      throw new Error("Dados invalidos.");
+    }
+
+    await db.raw(`
+      INSERT INTO users(id, name, email, password)
+      VALUES ("${id}", "${name}", "${email}", "${password}")
+    `);
+
     res.status(201).send("Usuario cadastrado com sucesso!");
   } catch (error) {
     res.status(404).send(error.message);
   }
 });
 //createNewProduct
-app.post("/products", (req: Request, res: Response) => {
+app.post("/products", async (req: Request, res: Response) => {
   try {
     const id = req.body.id as string;
     const name = req.body.name as string;
     const price = req.body.price as number;
-    const category = req.body.category as PRODUCT;
+    const description = req.body.description as string;
+    const imagemUrl = req.body.url as string;
 
-    if (products.some((product) => product.id === id)) {
-      throw new Error("Id de produto ja existe. tente outro id");
-    }
     if (name.length < 2) {
       throw new Error(
         "Novo nome do produto tem que ter no minimo 2 caracteres."
@@ -114,43 +112,51 @@ app.post("/products", (req: Request, res: Response) => {
         throw new Error("Valor do produto deve ser maior que 0");
       }
     }
-    if (!Object.values(PRODUCT).includes(category)) {
-      throw new Error("Categoria de produto não existe.");
+
+    if (!id || !name || !price || !description || !imagemUrl) {
+      throw new Error("Dados invalidos.");
     }
-    const newProduct: product = {
-      id,
-      name,
-      price,
-      category,
-    };
-    products.push(newProduct);
+
+    await db.raw(`
+        INSERT INTO products (id, name, price, description, image_url)
+        VALUES("${id}","${name}",${price},"${description}", "${imagemUrl}")
+    `);
+
     res.status(201).send("Produto cadastrado com sucesso!");
   } catch (error) {
     res.status(404).send(error.message);
   }
 });
 //createPurchase
-app.post("/purchases", (req: Request, res: Response) => {
+app.post("/purchases", async (req: Request, res: Response) => {
   try {
-    const userId = req.body.userId as string;
-    const productId = req.body.productId as string;
-    const quantity = req.body.quantity as number;
+    const id = req.body.id as string;
+    const idBuyer = req.body.idBuyer as string;
+    const totalPrice = req.body.totalPrice as number;
+    const paid = req.body.paid as number;
 
-    if(quantity !== undefined){
-      if(quantity <= 0){
-        throw new Error("Quantidade deve ser maior que 0")
-      }
-    } 
+    if (!id || !idBuyer || !totalPrice) {
+      throw new Error("Dados invalidos.");
+    }
+
+    await db.raw(`
+      INSERT INTO purchases(id, buyer, total_price, paid)
+      VALUES("${id}","${idBuyer}",${totalPrice},${paid})
+    `);
     
-    purchases.push(createPurchase(userId, productId, quantity));
     res.status(201).send("Compra realizada com sucesso!");
   } catch (error) {
     res.send(error.message);
   }
 });
 
-app.get("/purchases", (req: Request, res: Response) => {
-  res.send(purchases);
+app.get("/purchases", async (req: Request, res: Response) => {
+  try {
+    const result = await db.raw(`SELECT * FROM purchases`)
+    res.send(result);
+  } catch (error) {
+    res.send("Houve um erro inesperado");
+  }
 });
 
 // --------------------------------------------
@@ -166,4 +172,3 @@ app.delete("/products/:id", deleteProductById);
 app.put("/users/:id", modifiedUser);
 
 app.put("/products/:id", modifiecProduct);
-
