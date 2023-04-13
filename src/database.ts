@@ -1,3 +1,5 @@
+// não utilizo esse arquivo no projeto
+
 import { product, purchase, user, PRODUCT } from "./types";
 
 const persons: user[] = [

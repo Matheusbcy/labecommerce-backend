@@ -1,12 +1,8 @@
-// import { persons, products, purchases, createUsers, getAllUsers, createNewProduct, getAllProducts, getProductById } from "./database"
-// import { PRODUCT } from "./types"
-
 import express, { Request, Response } from "express";
 import cors from "cors";
-import { createPurchase, persons, products, purchases } from "./database";
-import { user, PRODUCT, product, purchase } from "./types";
 import {
   deleteProductById,
+  deletePurchaseById,
   deleteUserById,
   getProductById,
   getUserPurchasesByUserId,
@@ -14,6 +10,16 @@ import {
   modifiedUser,
 } from "./api/requests";
 import { db } from "./database/knex";
+
+interface RequestBody {
+  id: string;
+  idBuyer: string;
+  paid: number;
+  products: Array<{
+    id: string;
+    quantity: number;
+  }>;
+}
 
 const app = express();
 
@@ -28,7 +34,7 @@ app.listen(3003, () => {
 //getAllUsers
 app.get("/users", async (req: Request, res: Response) => {
   try {
-    const result = await db.raw(`SELECT * FROM users`);
+    const result = await db("users");
     res.status(200).send(result);
   } catch (error) {
     res.status(500);
@@ -38,7 +44,7 @@ app.get("/users", async (req: Request, res: Response) => {
 //getAllProducts
 app.get("/products", async (req: Request, res: Response) => {
   try {
-    const result = await db.raw(`SELECT * FROM products`);
+    const result = await db("products");
     res.status(200).send(result);
   } catch (error) {
     res.status(500);
@@ -48,15 +54,16 @@ app.get("/products", async (req: Request, res: Response) => {
 //searchProductsByName
 app.get("/product/search", async (req: Request, res: Response) => {
   try {
-    const q = req.query.q as string;
+    const name = req.query.name as string;
 
-    if (q) {
-      if (q.length < 2) {
+    if (name) {
+      if (name.length < 2) {
         res.status(404);
         throw new Error("Name deve possuir mais de uma letra.");
       }
     }
-    const result = await db.raw(`SELECT * FROM products WHERE name = "${q}"`);
+
+    const result = await db("products").where({ name: name });
 
     res.status(200).send(result);
   } catch (error) {
@@ -83,10 +90,14 @@ app.post("/users", async (req: Request, res: Response) => {
       throw new Error("Dados invalidos.");
     }
 
-    await db.raw(`
-      INSERT INTO users(id, name, email, password)
-      VALUES ("${id}", "${name}", "${email}", "${password}")
-    `);
+    const newUser = {
+      id,
+      name,
+      email,
+      password,
+    };
+
+    await db("users").insert(newUser);
 
     res.status(201).send("Usuario cadastrado com sucesso!");
   } catch (error) {
@@ -117,10 +128,15 @@ app.post("/products", async (req: Request, res: Response) => {
       throw new Error("Dados invalidos.");
     }
 
-    await db.raw(`
-        INSERT INTO products (id, name, price, description, image_url)
-        VALUES("${id}","${name}",${price},"${description}", "${imagemUrl}")
-    `);
+    const newProduct = {
+      id,
+      name,
+      price,
+      description,
+      image_url: imagemUrl,
+    };
+
+    await db("products").insert(newProduct);
 
     res.status(201).send("Produto cadastrado com sucesso!");
   } catch (error) {
@@ -130,29 +146,62 @@ app.post("/products", async (req: Request, res: Response) => {
 //createPurchase
 app.post("/purchases", async (req: Request, res: Response) => {
   try {
-    const id = req.body.id as string;
-    const idBuyer = req.body.idBuyer as string;
-    const totalPrice = req.body.totalPrice as number;
-    const paid = req.body.paid as number;
+    const { id, idBuyer, paid, products } = req.body as RequestBody;
 
-    if (!id || !idBuyer || !totalPrice) {
-      throw new Error("Dados invalidos.");
+    const buyer = await db("users").where({ id: idBuyer }).first();
+    if (!buyer) {
+      throw new Error(`O comprador com o ID ${idBuyer} não foi encontrado.`);
     }
 
-    await db.raw(`
-      INSERT INTO purchases(id, buyer, total_price, paid)
-      VALUES("${id}","${idBuyer}",${totalPrice},${paid})
-    `);
+    const [purchase] = await db("purchases").where({id : id})
+
+    if(purchase) {
+      throw new Error ("Já existe uma compra com esse id.")
+    }
+
+    if (!id || !idBuyer || !paid || !products) {
+      throw new Error("Dados inválidos.");
+    }
     
-    res.status(201).send("Compra realizada com sucesso!");
+    let totalPrice = 0;
+    
+    const newPurchase = {
+      id,
+      buyer: idBuyer,
+      total_price: totalPrice,
+      paid,
+    };
+    await db("purchases").insert(newPurchase);
+
+    for (const { id: productId, quantity } of products) {
+      const product = await db("products").where({ id: productId }).first();
+      if (!product) {
+        throw new Error(`O produto com o ID ${productId} não foi encontrado.`);
+      }
+      
+      const newPurchasesProducts = {
+        purchase_id: id,
+        product_id: productId,
+        quantity,
+      };
+      await db("purchases_products").insert(newPurchasesProducts);
+      
+      totalPrice += product.price * quantity;
+    }
+    
+    await db("purchases")
+      .where({ id })
+      .update({ total_price: totalPrice });
+
+    res.status(200).send("Compra realizada com sucesso!");
   } catch (error) {
-    res.send(error.message);
+    res.status(404).send(error.message);
   }
 });
 
 app.get("/purchases", async (req: Request, res: Response) => {
   try {
-    const result = await db.raw(`SELECT * FROM purchases`)
+    const result = await db("purchases");
     res.send(result);
   } catch (error) {
     res.send("Houve um erro inesperado");
@@ -172,3 +221,5 @@ app.delete("/products/:id", deleteProductById);
 app.put("/users/:id", modifiedUser);
 
 app.put("/products/:id", modifiecProduct);
+
+app.delete("/purchases/:id", deletePurchaseById)

@@ -1,20 +1,25 @@
 import express, { Request, Response } from "express";
-import { persons, products, purchases } from "../database";
-import { PRODUCT } from "../types";
 import { db } from "../database/knex";
 
 async function getProductById(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
 
-    const result = await db.raw(`SELECT * FROM products WHERE id = "${id}"`);
+    if (!id) {
+      throw new Error("Procure um produto por um id.");
+    }
+
+    if (id.length < 1) {
+      throw new Error("o Id deve ser maios que 1");
+    }
+
+    const result = await db("products").where({ id });
 
     if (result.length > 0) {
-      res.status(200).send("Produto encontrado no arquivo .db");
+      res.status(200).send("Produto encontrado no banco de dados");
     } else {
       throw new Error("Product not found");
     }
-
   } catch (error) {
     res.send(error.message);
   }
@@ -22,71 +27,113 @@ async function getProductById(req: Request, res: Response) {
 
 async function getUserPurchasesByUserId(req: Request, res: Response) {
   try {
-    const id = req.params.id as string;
+    const { id } = req.params;
 
-    const result = await db.raw(`SELECT * FROM purchases WHERE id = "${id}"`)
-
-    if (result.length > 0){
-      res.status(200).send("array de compras do user no arquivo .db")
-    } else {
-      throw new Error("Purchases not found.")
+    if (!id) {
+      throw new Error("Digite um id para pesquisar nas compras");
     }
-  } catch (error) {
-    res.send(error.message);
+
+    const result = await db("users")
+      .innerJoin("purchases", "users.id", "purchases.buyer")
+      .innerJoin(
+        "purchases_products",
+        "purchases.id",
+        "purchases_products.purchase_id"
+      )
+      .innerJoin("products", "products.id", "purchases_products.product_id")
+      .select(
+        "purchases.id as purchaseId",
+        "purchases.total_price as totalPrice",
+        "users.created_at as createdAt",
+        "purchases.paid as isPaid",
+        "purchases.buyer as buyerId",
+        "users.email as email",
+        "users.name as name",
+        "products.*",
+        "purchases_products.quantity"
+      )
+      .where("purchases.id", id)
+      .groupBy("purchases.id", "users.id", "products.id");
+
+    let totalPrice = 0;
+
+    const productsList = result.map((row) => {
+      const { id, name, price, description, image_url, quantity } = row;
+
+      totalPrice += price * quantity;
+
+      return { id, name, price, description, imageUrl: image_url, quantity };
+    });
+
+    result[0].totalPrice = totalPrice;
+
+    const response = {
+      purchaseId: result[0].purchaseId,
+      totalPrice: result[0].totalPrice,
+      createdAt: result[0].createdAt,
+      isPaid: result[0].isPaid,
+      buyerId: result[0].buyerId,
+      email: result[0].email,
+      productsList,
+    };
+    res.json(response);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Internal server error" });
   }
 }
 
-function deleteUserById(req: Request, res: Response): void {
+async function deleteUserById(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
 
-    if (!persons.some((person) => person.id === id)) {
-      res.status(404);
-      throw new Error("ID de usuário não existe.");
-    }
+    await db("purchases_products")
+      .whereIn("purchase_id", db("purchases").select("id").where("buyer", id))
+      .del();
 
-    const userDelete: number = persons.findIndex((person) => person.id === id);
+    await db("purchases").where("buyer", id).del();
+    await db("users").where({ id }).del();
 
-    if (userDelete >= 0) {
-      persons.splice(userDelete, 1);
-    }
     res.status(200).send("Usuário deletado com sucesso!");
   } catch (error) {
     res.send(error.message);
   }
 }
 
-function deleteProductById(req: Request, res: Response): void {
+async function deletePurchaseById(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
 
-    if (!products.some((product) => product.id === id)) {
-      res.status(404);
-      throw new Error("Id de produto não existe.");
-    }
+    await db("purchases_products").where("purchase_id", id).delete();
+    await db("purchases").where({ id: id }).delete();
 
-    const productDelete = products.findIndex((product) => product.id === id);
+    res.status(200).send("Compra deletada com sucesso!");
+  } catch (error) {
+    res.send(error.message);
+  }
+}
 
-    if (productDelete >= 0) {
-      products.splice(productDelete, 1);
-    }
+async function deleteProductById(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+
+    await db("purchases_products").whereIn("product_id", [id]).del();
+    await db("products").where({ id: id }).del();
+
     res.status(200).send("Produto deletado com sucesso!");
   } catch (error) {
     res.send(error.message);
   }
 }
 
-function modifiedUser(req: Request, res: Response): void {
+async function modifiedUser(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
 
-    if (!persons.some((user) => user.id === id)) {
-      res.status(404);
-      throw new Error("Id de usuário não existe.");
-    }
-
-    const newEmail = req.body.email as string | undefined;
-    const newPassword = req.body.password as string | undefined;
+    const newId = req.body.id as string;
+    const newName = req.body.name as string;
+    const newEmail = req.body.email as string;
+    const newPassword = req.body.password as string;
 
     if (newPassword !== undefined) {
       if (newPassword.length < 8) {
@@ -101,32 +148,36 @@ function modifiedUser(req: Request, res: Response): void {
       }
     }
 
-    const userModified = persons.find((person) => person.id === id);
+    const [user] = await db("users").where({ id });
 
-    if (userModified) {
-      userModified.email = newEmail || userModified.email;
-      userModified.password = newPassword || userModified.password;
-      res.status(200).send("Usuário atualizado com sucesso!");
+    if (user) {
+      const updatedUser = {
+        id: newId || user.id,
+        name: newName || user.name,
+        email: newEmail || user.email,
+        password: newPassword || user.password,
+      };
+
+      await db("users").update(updatedUser).where({ id });
+      res.status(200).send("Usuário atualizado com sucesso.");
     } else {
-      res.status(400).send("Usuário não encontrado!");
+      res.status(404);
+      throw new Error("'id' não encontrada");
     }
   } catch (error) {
     res.send(error.message);
   }
 }
 
-function modifiecProduct(req: Request, res: Response): void {
+async function modifiecProduct(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
 
-    if (!products.some((p) => p.id === id)) {
-      res.status(404);
-      throw new Error("Id de produto não existe.");
-    }
-
-    const newName = req.body.name as string | undefined;
-    const newPrice = req.body.price as number | undefined;
-    const newCategory = req.body.category as PRODUCT | undefined;
+    const newId = req.body.id as string;
+    const newName = req.body.name as string;
+    const newPrice = req.body.price as number;
+    const newDescription = req.body.description as string;
+    const newUrl = req.body.url as string;
 
     if (newName !== undefined) {
       if (newName.length < 2) {
@@ -140,25 +191,22 @@ function modifiecProduct(req: Request, res: Response): void {
         throw new Error("Preço deve ser maior que 0.");
       }
     }
-    if (newCategory !== undefined) {
-      if (!Object.values(PRODUCT).includes(newCategory)) {
-        res.status(404);
-        throw new Error("Catergoria do produto não está cadastrado.");
-      }
-    }
 
-    const productModified = products.find((product) => product.id === id);
+    const [product] = await db("products").where({ id });
 
-    if (productModified) {
-      productModified.name = newName || productModified.name;
-      productModified.price = isNaN(newPrice)
-        ? productModified.price
-        : newPrice;
-      productModified.category = newCategory || productModified.category;
-
-      res.status(200).send("Produto atualizado com sucesso!");
+    if (product) {
+      const newProduct = {
+        id: newId || product.id,
+        name: newName || product.name,
+        price: isNaN(newPrice) ? product.price : newPrice,
+        description: newDescription || product.description,
+        image_url: newUrl || product.image_url,
+      };
+      await db("products").update(newProduct).where({ id });
+      res.status(200).send("Produto atualizado com sucesso.");
     } else {
-      res.status(400).send("Produto não encontrado!");
+      res.status(404);
+      throw new Error("Id de produto não encontrado");
     }
   } catch (error) {
     res.send(error.message);
@@ -172,4 +220,5 @@ export {
   deleteProductById,
   modifiedUser,
   modifiecProduct,
+  deletePurchaseById,
 };

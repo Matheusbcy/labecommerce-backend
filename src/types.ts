@@ -1,3 +1,5 @@
+// não utilizo esse arquivo no projeto
+
 export enum PRODUCT {
   ACCESSORIES = "Acessórios",
   CLOTHES_AND_SHOES = "Roupas e calçados",

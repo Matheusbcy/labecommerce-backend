@@ -1,5 +1,5 @@
 -- Active: 1680819049363@@127.0.0.1@3306
-
+-- não utilizo esse arquivo no projeto
 -- CREATE TABLE
 --     users (
 --         id TEXT PRIMARY KEY UNIQUE NOT NULL,
