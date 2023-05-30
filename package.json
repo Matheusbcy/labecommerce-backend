@@ -1,0 +1,32 @@
+{
+  "name": "labecommer-backend",
+  "version": "1.0.0",
+  "description": "ATENÇÃO! Não forke nem clone esse repositório. Ele serve apenas como enunciado!<br><br>\r <strong>Você deve criar seu próprio repo pessoal chamado labecommerce-backend. Evite trabalhar na main e crie branches para organizar cada nova implementação ou refatoração. A de hoje por exemplo, pode se chamar node-package-json.</strong>\r ### Comando para criar a branch e já entrar nela\r ```\r git checkout -b node-package-json\r ```",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsc && node ./build/index.js",
+    "dev": "ts-node-dev src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Matheusbcy/node-package-json-exercicios.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Matheusbcy/node-package-json-exercicios/issues"
+  },
+  "homepage": "https://github.com/Matheusbcy/node-package-json-exercicios#readme",
+  "devDependencies": {
+    "@types/body-parser": "^1.19.2",
+    "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.17",
+    "@types/node": "^18.14.5",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}
