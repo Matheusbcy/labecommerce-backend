@@ -1,10 +1,25 @@
-// import { persons, products, purchases, createUsers, getAllUsers, createNewProduct, getAllProducts, getProductById } from "./database"
-// import { PRODUCT } from "./types"
-
 import express, { Request, Response } from "express";
 import cors from "cors";
-import { persons, products, purchases } from "./database";
-import { user, PRODUCT, product, purchase } from "./types"
+import {
+  deleteProductById,
+  deletePurchaseById,
+  deleteUserById,
+  getProductById,
+  getUserPurchasesByUserId,
+  modifiecProduct,
+  modifiedUser,
+} from "./api/requests";
+import { db } from "./database/knex";
+
+interface RequestBody {
+  id: string;
+  idBuyer: string;
+  paid: number;
+  products: Array<{
+    id: string;
+    quantity: number;
+  }>;
+}
 
 const app = express();
 
@@ -16,76 +31,195 @@ app.listen(3003, () => {
   console.log("Servidor rodando na porta 3003");
 });
 
-app.get("/ping", (req: Request, res: Response) => {
-  res.send("Pong!");
+//getAllUsers
+app.get("/users", async (req: Request, res: Response) => {
+  try {
+    const result = await db("users");
+    res.status(200).send(result);
+  } catch (error) {
+    res.status(500);
+  }
 });
 
-//getAllUsers
-app.get("/users", (req: Request, res: Response) => {
-  res.send(persons);
-});
 //getAllProducts
-app.get("/products", (req: Request, res: Response) => {
-  res.send(products);
+app.get("/products", async (req: Request, res: Response) => {
+  try {
+    const result = await db("products");
+    res.status(200).send(result);
+  } catch (error) {
+    res.status(500);
+  }
 });
+
 //searchProductsByName
-app.get("/product/search", (req: Request, res: Response) => {
-  const q = req.query.q as string;
-  const result = products.filter((product) => {
-    if (q) {
-      return product.name.toLowerCase().includes(q.toLowerCase());
+app.get("/product/search", async (req: Request, res: Response) => {
+  try {
+    const name = req.query.name as string;
+
+    if (name) {
+      if (name.length < 2) {
+        res.status(404);
+        throw new Error("Name deve possuir mais de uma letra.");
+      }
     }
-    return products;
-  });
-  res.status(200).send(result);
+
+    const result = await db("products").where({ name: name });
+
+    res.status(200).send(result);
+  } catch (error) {
+    res.send(error.message);
+  }
 });
+
 //createNewUser
-app.post("/users", (req: Request, res: Response) => {
+app.post("/users", async (req: Request, res: Response) => {
+  try {
     const id = req.body.id as string;
+    const name = req.body.name as string;
     const email = req.body.email as string;
     const password = req.body.password as string;
 
-    const newUser: user = {
-        id,
-        email,
-        password,
+    if (password.length < 8) {
+      throw new Error("Senha deve contar no minimo 8 caracteres.");
     }
-    persons.push(newUser)
-    res.status(201).send("Usuario cadastrado com sucesso!")
-})
+    if (!email.includes("@")) {
+      throw new Error("Email deve conter @");
+    }
+
+    if (!id || !email || !name || !password) {
+      throw new Error("Dados invalidos.");
+    }
+
+    const newUser = {
+      id,
+      name,
+      email,
+      password,
+    };
+
+    await db("users").insert(newUser);
+
+    res.status(201).send("Usuario cadastrado com sucesso!");
+  } catch (error) {
+    res.status(404).send(error.message);
+  }
+});
 //createNewProduct
-app.post("/products", (req: Request, res: Response) => {
+app.post("/products", async (req: Request, res: Response) => {
+  try {
     const id = req.body.id as string;
     const name = req.body.name as string;
     const price = req.body.price as number;
-    const category = req.body.category as PRODUCT
+    const description = req.body.description as string;
+    const imagemUrl = req.body.url as string;
 
-    const newProduct: product = {
-        id,
-        name,
-        price,
-        category,
+    if (name.length < 2) {
+      throw new Error(
+        "Novo nome do produto tem que ter no minimo 2 caracteres."
+      );
     }
-    products.push(newProduct)
-    res.status(201).send("Produto cadastrado com sucesso!")
-})
+    if (price !== undefined) {
+      if (price < 0) {
+        throw new Error("Valor do produto deve ser maior que 0");
+      }
+    }
+
+    if (!id || !name || !price || !description || !imagemUrl) {
+      throw new Error("Dados invalidos.");
+    }
+
+    const newProduct = {
+      id,
+      name,
+      price,
+      description,
+      image_url: imagemUrl,
+    };
+
+    await db("products").insert(newProduct);
+
+    res.status(201).send("Produto cadastrado com sucesso!");
+  } catch (error) {
+    res.status(404).send(error.message);
+  }
+});
 //createPurchase
-app.post("/purchases", (req: Request, res: Response) => {
-    const userId = req.body.userId as string;
-    const productId = req.body.productId as string;
-    const quantity = req.body.quantity as number;
-    const totalPrice = req.body.totalPrice as any;
+app.post("/purchases", async (req: Request, res: Response) => {
+  try {
+    const { id, idBuyer, paid, products } = req.body as RequestBody;
 
-    const newPurchase: purchase = {
-        userId,
-        productId,
-        quantity,
-        totalPrice,
+    const buyer = await db("users").where({ id: idBuyer }).first();
+    if (!buyer) {
+      throw new Error(`O comprador com o ID ${idBuyer} não foi encontrado.`);
     }
-    purchases.push(newPurchase)
-    res.status(201).send("Compra realizada com sucesso!")
-})
 
-app.get("/purchases", (req: Request, res: Response) => {
-    res.send(purchases)
-})
+    const [purchase] = await db("purchases").where({id : id})
+
+    if(purchase) {
+      throw new Error ("Já existe uma compra com esse id.")
+    }
+
+    if (!id || !idBuyer || !paid || !products) {
+      throw new Error("Dados inválidos.");
+    }
+    
+    let totalPrice = 0;
+    
+    const newPurchase = {
+      id,
+      buyer: idBuyer,
+      total_price: totalPrice,
+      paid,
+    };
+    await db("purchases").insert(newPurchase);
+
+    for (const { id: productId, quantity } of products) {
+      const product = await db("products").where({ id: productId }).first();
+      if (!product) {
+        throw new Error(`O produto com o ID ${productId} não foi encontrado.`);
+      }
+      
+      const newPurchasesProducts = {
+        purchase_id: id,
+        product_id: productId,
+        quantity,
+      };
+      await db("purchases_products").insert(newPurchasesProducts);
+      
+      totalPrice += product.price * quantity;
+    }
+    
+    await db("purchases")
+      .where({ id })
+      .update({ total_price: totalPrice });
+
+    res.status(200).send("Compra realizada com sucesso!");
+  } catch (error) {
+    res.status(404).send(error.message);
+  }
+});
+
+app.get("/purchases", async (req: Request, res: Response) => {
+  try {
+    const result = await db("purchases");
+    res.send(result);
+  } catch (error) {
+    res.send("Houve um erro inesperado");
+  }
+});
+
+// --------------------------------------------
+
+app.get("/products/:id", getProductById);
+
+app.get("/users/:id/purchases", getUserPurchasesByUserId);
+
+app.delete("/users/:id", deleteUserById);
+
+app.delete("/products/:id", deleteProductById);
+
+app.put("/users/:id", modifiedUser);
+
+app.put("/products/:id", modifiecProduct);
+
+app.delete("/purchases/:id", deletePurchaseById)
